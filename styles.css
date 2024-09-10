@@ -1,0 +1,12 @@
+body, h1, h2, h3, h4, h5, h6 {
+    font-family: Helvetica, sans-serif, Arial;
+}
+
+div {
+    margin: 0.3em;
+    font-size: 0.9em;
+}
+
+input {
+    margin-left: 0.5em;
+}

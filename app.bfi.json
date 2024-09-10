@@ -1,0 +1,291 @@
+{
+    "$schema": "https://vega.github.io/schema/vega/v5.json",
+    "width": 1500,
+    "height": 1000,
+    "padding": 0,
+    "autosize": "none",
+    "signals": [
+        {
+            "name": "cx",
+            "update": "width / 2"
+        },
+        {
+            "name": "cy",
+            "update": "height / 2"
+        },
+        {
+            "name": "searchText",
+            "value": "",
+            "bind": {
+                "input": "text"
+            }
+        },
+        {
+            "name": "minLinks",
+            "value": 0,
+            "bind": {
+                "input": "range",
+                "min": 0,
+                "max": 200,
+                "step": 1
+            }
+        },
+        {
+            "name": "nodeRadius",
+            "value": 3,
+            "bind": {
+                "input": "range",
+                "min": 1,
+                "max": 50,
+                "step": 1
+            }
+        },
+        {
+            "name": "nodeCharge",
+            "value": -30,
+            "bind": {
+                "input": "range",
+                "min": -100,
+                "max": 10,
+                "step": 1
+            }
+        },
+        {
+            "name": "linkDistance",
+            "value": 30,
+            "bind": {
+                "input": "range",
+                "min": 5,
+                "max": 100,
+                "step": 1
+            }
+        },
+        {
+            "name": "static",
+            "value": false,
+            "bind": {
+                "input": "checkbox"
+            }
+        },
+        {
+            "description": "State variable for active node fix status.",
+            "name": "fix",
+            "value": 0,
+            "on": [
+                {
+                    "events": "symbol:mouseout[!event.buttons], window:mouseup",
+                    "update": "0"
+                },
+                {
+                    "events": "symbol:mouseover",
+                    "update": "fix || 1"
+                },
+                {
+                    "events": "[symbol:mousedown, window:mouseup] > window:mousemove!",
+                    "update": "2",
+                    "force": true
+                }
+            ]
+        },
+        {
+            "description": "Graph node most recently interacted with.",
+            "name": "node",
+            "value": null,
+            "on": [
+                {
+                    "events": "symbol:mouseover",
+                    "update": "fix === 1 ? item() : node"
+                }
+            ]
+        },
+        {
+            "description": "Flag to restart Force simulation upon data changes.",
+            "name": "restart",
+            "value": false,
+            "on": [
+                {
+                    "events": {
+                        "signal": "fix"
+                    },
+                    "update": "fix > 1"
+                }
+            ]
+        }
+    ],
+    "data": [
+        {
+            "name": "link-data",
+            "url": "data/bacterial_fungal_interactions.vega.json",
+            "format": {
+                "type": "json",
+                "property": "links"
+            },
+            "transform": [
+                { "type": "filter", "expr": "searchText ? (datum.source_name==searchText || datum.target_name==searchText) : true" }
+            ]
+        },
+        {
+            "name": "node-data",
+            "url": "data/bacterial_fungal_interactions.vega.json",
+            "format": {
+                "type": "json",
+                "property": "nodes"
+            },
+            "transform": [
+                {
+                    "type": "lookup",
+                    "from": "link-data",
+                    "key": "source_name",
+                    "fields": ["name"],
+                    "values": ["source_name", "target_name"],
+                    "as": ["source_name1", "target_name1"]
+                },
+                {
+                    "type": "lookup",
+                    "from": "link-data",
+                    "key": "target_name",
+                    "fields": ["name"],
+                    "values": ["source_name", "target_name"],
+                    "as": ["source_name2", "target_name2"]
+                },
+                {
+                    "type": "filter",
+                    "expr": "searchText ? (datum['source_name1']==searchText || datum['target_name1']==searchText || datum['source_name2']==searchText || datum['target_name2']==searchText) : true"
+                }
+            ]
+        }
+    ],
+    "scales": [
+        {
+            "name": "color",
+            "type": "ordinal",
+            "range": {
+                "scheme": "category10"
+            }
+        }
+    ],
+    "marks": [
+        {
+            "name": "nodes",
+            "type": "symbol",
+            "zindex": 1,
+            "from": {
+                "data": "node-data"
+            },
+            "on": [
+                {
+                    "trigger": "fix",
+                    "modify": "node",
+                    "values": "fix === 1 ? {fx:node.x, fy:node.y} : {fx:x(), fy:y()}"
+                },
+                {
+                    "trigger": "!fix",
+                    "modify": "node",
+                    "values": "{fx: null, fy: null}"
+                }
+            ],
+            "encode": {
+                "enter": {
+                    "fill": {
+                        "scale": "color",
+                        "field": "group"
+                    },
+                    "tooltip": {
+                        "signal": "datum.group + ': ' + datum.name + ' (links: ' + datum.count + ')'"
+                    }
+                },
+                "update": {
+                    "size": {
+                        "signal": "2 * nodeRadius * datum.count + 20"
+                    },
+                    "cursor": {
+                        "value": "pointer"
+                    },
+                    "stroke": {
+                        "signal": "datum.count > minLinks && minLinks > 0 ? '#d62728' : 'white'"
+                    },
+                    "strokeWidth": {
+                        "signal": "datum.count > minLinks && minLinks > 0 ? 10 : 1"
+                    },
+                    "strokeOpacity": {
+                        "signal": "datum.count > minLinks && minLinks > 0 ? 0.8 : 1"
+                    }
+                }
+            },
+            "transform": [
+                {
+                    "type": "force",
+                    "iterations": 300,
+                    "restart": {
+                        "signal": "restart"
+                    },
+                    "static": {
+                        "signal": "static"
+                    },
+                    "forces": [
+                        {
+                            "force": "center",
+                            "x": {
+                                "signal": "cx"
+                            },
+                            "y": {
+                                "signal": "cy"
+                            }
+                        },
+                        {
+                            "force": "collide",
+                            "radius": {
+                                "signal": "nodeRadius"
+                            }
+                        },
+                        {
+                            "force": "nbody",
+                            "strength": {
+                                "signal": "nodeCharge"
+                            }
+                        },
+                        {
+                            "force": "link",
+                            "links": "link-data",
+                            "distance": {
+                                "signal": "linkDistance"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "path",
+            "from": {
+                "data": "link-data"
+            },
+            "interactive": true,
+            "encode": {
+                "enter": {
+                    "tooltip": {
+                        "signal": "datum.source_name + ' -> ' + datum.target_name"
+                    }
+                },
+                "update": {
+                    "stroke": {
+                        "signal": "datum.found_in_16s=='Yes' ? '#ccebc5' : '#ccc'"
+                    },
+                    "strokeWidth": {
+                        "signal": "datum.found_in_prev=='Yes' ? 2.4 : 0.8"
+                    }
+                }
+            },
+            "transform": [
+                {
+                    "type": "linkpath",
+                    "shape": "line",
+                    "sourceX": "datum.source.x",
+                    "sourceY": "datum.source.y",
+                    "targetX": "datum.target.x",
+                    "targetY": "datum.target.y"
+                }
+            ]
+        }
+    ]
+}

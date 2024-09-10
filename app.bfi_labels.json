@@ -1,0 +1,536 @@
+{
+    "$schema": "https://vega.github.io/schema/vega/v5.json",
+    "width": 1300,
+    "height": 800,
+    "padding": 0,
+    "autosize": "none",
+    "signals": [
+        {
+            "name": "cx",
+            "update": "width / 2"
+        },
+        {
+            "name": "cy",
+            "update": "height / 2"
+        },
+        {
+            "name": "searchGenus",
+            "value": "",
+            "bind": {
+                "input": "text"
+            }
+        },
+        {
+            "name": "searchPhylum",
+            "value": "",
+            "bind": {
+                "input": "text"
+            }
+        },
+        {
+            "name": "colorPhyla",
+            "value": false,
+            "bind": {
+                "input": "checkbox"
+            }
+        },
+        {
+            "name": "minLinks",
+            "value": 0,
+            "bind": {
+                "input": "range",
+                "min": 0,
+                "max": 200,
+                "step": 1
+            }
+        },
+        {
+            "name": "nodeRadius",
+            "value": 3,
+            "bind": {
+                "input": "range",
+                "min": 1,
+                "max": 50,
+                "step": 1
+            }
+        },
+        {
+            "name": "nodeCharge",
+            "value": -30,
+            "bind": {
+                "input": "range",
+                "min": -100,
+                "max": 10,
+                "step": 1
+            }
+        },
+        {
+            "name": "linkDistance",
+            "value": 30,
+            "bind": {
+                "input": "range",
+                "min": 5,
+                "max": 500,
+                "step": 1
+            }
+        },
+        {
+            "name": "static",
+            "value": false,
+            "bind": {
+                "input": "checkbox"
+            }
+        },
+        {
+            "description": "State variable for active node fix status.",
+            "name": "fix",
+            "value": 0,
+            "on": [
+                {
+                    "events": "symbol:mouseout[!event.buttons], window:mouseup",
+                    "update": "0"
+                },
+                {
+                    "events": "symbol:mouseover",
+                    "update": "fix || 1"
+                },
+                {
+                    "events": "[symbol:mousedown, window:mouseup] > window:mousemove!",
+                    "update": "2",
+                    "force": true
+                }
+            ]
+        },
+        {
+            "description": "Graph node most recently interacted with.",
+            "name": "node",
+            "value": null,
+            "on": [
+                {
+                    "events": "symbol:mouseover",
+                    "update": "fix === 1 ? item() : node"
+                }
+            ]
+        },
+        {
+            "description": "Flag to restart Force simulation upon data changes.",
+            "name": "restart",
+            "value": false,
+            "on": [
+                {
+                    "events": {
+                        "signal": "fix"
+                    },
+                    "update": "fix > 1"
+                }
+            ]
+        },
+        {
+            "name": "zoom",
+            "value": 1
+        }
+    ],
+    "data": [
+        {
+            "name": "node-lookup-data",
+            "url": "data/bacterial_fungal_interactions.vega.json",
+            "format": {
+                "type": "json",
+                "property": "nodes"
+            }
+        },
+        {
+            "name": "link-data",
+            "url": "data/bacterial_fungal_interactions.vega.json",
+            "format": {
+                "type": "json",
+                "property": "links"
+            },
+            "transform": [
+                {
+                    "type": "lookup",
+                    "from": "node-lookup-data",
+                    "key": "name",
+                    "fields": [
+                        "source_name"
+                    ],
+                    "values": [
+                        "phylum"
+                    ],
+                    "as": [
+                        "phylum_s"
+                    ]
+                },
+                {
+                    "type": "lookup",
+                    "from": "node-lookup-data",
+                    "key": "name",
+                    "fields": [
+                        "target_name"
+                    ],
+                    "values": [
+                        "phylum"
+                    ],
+                    "as": [
+                        "phylum_t"
+                    ]
+                },
+                {
+                    "type": "filter",
+                    "expr": "searchGenus ? (indexof(lower(datum.source_name), lower(searchGenus))==0 || indexof(lower(datum.target_name), lower(searchGenus))==0) : true"
+                },
+                {
+                    "type": "filter",
+                    "expr": "searchPhylum ? (indexof(lower(datum.phylum_s), lower(searchPhylum))==0 || indexof(lower(datum.phylum_t), lower(searchPhylum))==0) : true"
+                }
+            ]
+        },
+        {
+            "name": "node-data",
+            "url": "data/bacterial_fungal_interactions.vega.json",
+            "format": {
+                "type": "json",
+                "property": "nodes"
+            },
+            "transform": [
+                {
+                    "type": "lookup",
+                    "from": "link-data",
+                    "key": "source_name",
+                    "fields": [
+                        "name"
+                    ],
+                    "values": [
+                        "source_name",
+                        "target_name",
+                        "phylum_s",
+                        "phylum_t"
+                    ],
+                    "as": [
+                        "source_name1",
+                        "target_name1",
+                        "phylum_s1",
+                        "phylum_t1"
+                    ],
+                    "default": ""
+                },
+                {
+                    "type": "lookup",
+                    "from": "link-data",
+                    "key": "target_name",
+                    "fields": [
+                        "name"
+                    ],
+                    "values": [
+                        "source_name",
+                        "target_name",
+                        "phylum_s",
+                        "phylum_t"
+                    ],
+                    "as": [
+                        "source_name2",
+                        "target_name2",
+                        "phylum_s2",
+                        "phylum_t2"
+                    ],
+                    "default": ""
+                },
+                {
+                    "type": "filter",
+                    "expr": "searchGenus ? (indexof(lower(datum.source_name1), lower(searchGenus))==0 || indexof(lower(datum.target_name1), lower(searchGenus))==0 || indexof(lower(datum.source_name2), lower(searchGenus))==0 || indexof(lower(datum.target_name2), lower(searchGenus))==0) : true"
+                },
+                {
+                    "type": "filter",
+                    "expr": "searchPhylum ? (indexof(lower(datum.phylum_s1), lower(searchPhylum))==0 || indexof(lower(datum.phylum_t1), lower(searchPhylum))==0 || indexof(lower(datum.phylum_s2), lower(searchPhylum))==0 || indexof(lower(datum.phylum_t2), lower(searchPhylum))==0) : true"
+                }
+            ]
+        }
+    ],
+    "selection": {
+        "grid": {
+            "type": "interval",
+            "bind": "scales"
+        }
+    },
+    "scales": [
+        {
+            "name": "color",
+            "type": "ordinal",
+            "range": {
+                "scheme": "category10"
+            }
+        },
+        {
+            "name": "phylum_color",
+            "type": "ordinal",
+            "range": {
+                "scheme": "set3"
+            }
+        },
+        {
+            "name": "links",
+            "type": "ordinal",
+            "domain": [
+                "Interaction",
+                "Found in 16s"
+            ],
+            "range": [
+                "#ccc",
+                "#ccebc5"
+            ]
+        }
+    ],
+    "marks": [
+        {
+            "name": "nodes",
+            "type": "symbol",
+            "zindex": 1,
+            "from": {
+                "data": "node-data"
+            },
+            "interactive": true,
+            "on": [
+                {
+                    "trigger": "fix",
+                    "modify": "node",
+                    "values": "fix === 1 ? {fx:node.x, fy:node.y} : {fx:x(), fy:y()}"
+                },
+                {
+                    "trigger": "!fix",
+                    "modify": "node",
+                    "values": "{fx: null, fy: null}"
+                }
+            ],
+            "encode": {
+                "enter": {
+                    "fill": {
+                        "scale": "color",
+                        "field": "group"
+                    },
+                    "tooltip": {
+                        "signal": "datum.group + ': ' + datum.name + ' (links: ' + datum.count + '; phylum: ' + datum.phylum + ')'"
+                    },
+                    "stroke": [
+                        {
+                            "scale": "phylum_color",
+                            "field": "phylum"
+                        }
+                    ]
+                },
+                "update": {
+                    "size": {
+                        "signal": "2 * nodeRadius * datum.count + 20 * zoom"
+                    },
+                    "cursor": {
+                        "value": "pointer"
+                    },
+                    "stroke": [
+                        {
+                            "test": "colorPhyla",
+                            "scale": "phylum_color",
+                            "field": "phylum"
+                        },
+                        {
+                            "value": "white"
+                        }
+                    ],
+                    "strokeWidth": {
+                        "signal": "datum.count > minLinks && minLinks > 0 ? 10 : 1.5"
+                    },
+                    "strokeOpacity": {
+                        "signal": "datum.count > minLinks && minLinks > 0 ? 0.9 : 1"
+                    }
+                }
+            },
+            "transform": [
+                {
+                    "type": "force",
+                    "iterations": 300,
+                    "restart": {
+                        "signal": "restart"
+                    },
+                    "static": {
+                        "signal": "static"
+                    },
+                    "forces": [
+                        {
+                            "force": "center",
+                            "x": {
+                                "signal": "cx"
+                            },
+                            "y": {
+                                "signal": "cy"
+                            }
+                        },
+                        {
+                            "force": "collide",
+                            "radius": {
+                                "signal": "nodeRadius"
+                            }
+                        },
+                        {
+                            "force": "nbody",
+                            "strength": {
+                                "signal": "nodeCharge"
+                            }
+                        },
+                        {
+                            "force": "link",
+                            "links": "link-data",
+                            "distance": {
+                                "signal": "linkDistance * zoom"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "text",
+            "zindex": 2,
+            "from": {
+                "data": "nodes"
+            },
+            "encode": {
+                "enter": {
+                    "align": {"value": "center"},
+                    "baseline": {"value": "middle"},          
+                    "fontSize": {
+                        "value": 10
+                    },
+                    "text": {
+                        "field": "datum.name"
+                    }
+                },
+                "update": {
+                    "x": {
+                        "field": "x",
+                        "offset": 8
+                    },
+                    "y": {
+                        "field": "y",
+                        "offset": 8
+                    }
+                }
+            }
+        },
+        {
+            "type": "path",
+            "from": {
+                "data": "link-data"
+            },
+            "interactive": true,
+            "encode": {
+                "enter": {
+                    "tooltip": {
+                        "signal": "datum.source_name + ' <-> ' + datum.target_name + ' (Found in 16s:' + datum.found_in_16s + ', prev work:' + datum.found_in_prev + ')'"
+                    }
+                },
+                "update": {
+                    "cursor": {
+                        "value": "pointer"
+                    },
+                    "stroke": {
+                        "signal": "datum.found_in_16s=='Yes' ? '#ccebc5' : '#ccc'"
+                    },
+                    "strokeWidth": {
+                        "signal": "datum.found_in_prev=='Yes' ? 2.4 : 0.8"
+                    }
+                }
+            },
+            "transform": [
+                {
+                    "type": "linkpath",
+                    "shape": "line",
+                    "sourceY": "datum.source.y",
+                    "sourceX": "datum.source.x",
+                    "targetY": "datum.target.y",
+                    "targetX": "datum.target.x"
+                }
+            ]
+        }
+    ],
+    "legends": [
+        {
+            "fill": "color",
+            "title": "Genus",
+            "orient": "top-left",
+            "encode": {
+                "symbols": {
+                    "update": {
+                        "strokeWidth": {
+                            "value": 2
+                        },
+                        "opacity": {
+                            "value": 0.8
+                        },
+                        "size": {
+                            "value": 64
+                        }
+                    }
+                },
+                "labels": {
+                    "update": {
+                        "opacity": {
+                            "value": 0.7
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "stroke": "links",
+            "title": "Interaction",
+            "orient": "top-left",
+            "encode": {
+                "symbols": {
+                    "update": {
+                        "strokeWidth": {
+                            "value": 3
+                        },
+                        "opacity": {
+                            "value": 1
+                        },
+                        "shape": {
+                            "value": "stroke"
+                        }
+                    }
+                },
+                "labels": {
+                    "update": {
+                        "opacity": {
+                            "value": 0.7
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "stroke": "phylum_color",
+            "title": "Phyla",
+            "orient": "top-right",
+            "encode": {
+                "symbols": {
+                    "update": {
+                        "strokeWidth": {
+                            "value": 3
+                        },
+                        "opacity": {
+                            "value": 0.8
+                        },
+                        "size": {
+                            "value": 64
+                        }
+                    }
+                },
+                "labels": {
+                    "update": {
+                        "opacity": {
+                            "value": 0.7
+                        }
+                    }
+                }
+            }
+        }
+    ]
+}

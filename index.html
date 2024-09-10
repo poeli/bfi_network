@@ -1,0 +1,17 @@
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <H2>BFI Network</H2>
+    <div id="view"></div>
+    <!-- <div>
+        Input search term
+        <input type="text" id="filterDataInput" value="" onchange="">
+    </div> -->
+    <script>
+        vegaEmbed('#view', 'app.json');
+    </script>
+  </body>
